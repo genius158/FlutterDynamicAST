@@ -80,8 +80,11 @@ class DVM {
         return condition;
 
       case "PostfixExpression":
-        return _executeLexeme(_expressions(condition["operand"], args)["name"],
-            0, condition["lexeme"], args);
+        var operand = _expressions(condition["operand"], args);
+        if (_isParamsId(operand)) {
+          return _executeLexeme(operand["name"], 0, condition["lexeme"], args);
+        }
+        return _executeLexeme(operand, 0, condition["lexeme"], args);
 
       case "IndexExpression":
         return [
@@ -129,8 +132,13 @@ class DVM {
         }
 
       case "PrefixExpression":
-        return _calculate(
-            0, _expressions(condition["operand"], args), condition["lexeme"]);
+        var res = _expressions(condition["operand"], args);
+        if (_isParamsId(res)) {
+          args[res["name"]] =
+              _calculate(null, _warpValueIfId(res, args), condition["lexeme"]);
+          return _warpValueIfId(res, args);
+        }
+        return _calculate(null, res, condition["lexeme"]);
 
       case "AssignmentExpression":
         final left = _expressions(condition["leftHandSide"], args);
@@ -332,6 +340,15 @@ class DVM {
   }
 
   dynamic _calculate(a, b, lexeme) {
+    if (a == null) {
+      switch (lexeme) {
+        case "++":
+          return ++b;
+        case "--":
+          return --b;
+      }
+    }
+    a ??= 0;
     switch (lexeme) {
       case "+":
         return a + b;
@@ -365,16 +382,16 @@ class DVM {
         break;
       case "+=":
         args[left] = args[left] + right;
-        break;
+        return args[left];
       case "-=":
         args[left] = args[left] - right;
-        break;
+        return args[left];
       case "++":
         args[left] = args[left] + 1;
-        break;
+        return args[left];
       case "--":
         args[left] = args[left] - 1;
-        break;
+        return args[left];
     }
   }
 
