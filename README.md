@@ -1,16 +1,110 @@
-# ast_test
+# FlutterDynamicAST
 
-A new Flutter project.
+flutter 动态执行 ast 示例
 
-## Getting Started
+## 生成 ast
 
-This project is a starting point for a Flutter application.
+- 生成 lib下的test3.dart dart simple_ast.dart -f test3.dart
 
-A few resources to get you started if this is your first Flutter project:
+## 运算相关 ([test2.dart](lib/test2.dart))
 
-- [Lab: Write your first Flutter app](https://flutter.dev/docs/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://flutter.dev/docs/cookbook)
+具体执行见main函数
 
-For help getting started with Flutter, view our
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```
+dynamic test3(int num) {
+    if (num % 2 == 0) {
+      return num * 2;
+    }else{
+      return num;
+    }
+  }
+  
+//ast
+{
+    "type":"MethodDeclaration",
+    "name":{
+        "type":"SimpleIdentifier",
+        "isPrivateName":false,
+        "name":"test"
+    },
+    "parameters":{
+        "type":"FormalParameterList",
+        "args":[
+            {
+                "type":"SimpleFormalParameter",
+                "paramType":{
+                    "type":"TypeName",
+                    "name":{
+                        "type":"SimpleIdentifier",
+                        "isPrivateName":false,
+                        "name":"String"
+                    }
+                },
+                "name":"test",
+                "identifier":{
+                    "type":"SimpleIdentifier",
+                    "isPrivateName":false,
+                    "name":"test"
+                }
+            }
+        ]
+    },
+    "typeParameters":null,
+    "body":{
+        "type":"BlockFunctionBody",
+        "keyword":null,
+        "block":{
+            "type":"Block",
+            "statements":[
+                {
+                    "type":"VariableDeclarationStatement",
+                    "variables":{
+                        "type":"VariableDeclarationList",
+                        "typeAnnotation":null,
+                        "variables":[
+                            {
+                                "type":"VariableDeclarator",
+                                "name":{
+                                    "type":"SimpleIdentifier",
+                                    "isPrivateName":false,
+                                    "name":"res"
+                                },
+                                "initializer":{
+                                    "type":"BinaryExpression",
+                                    "lexeme":"+",
+                                    "leftOperand":{
+                                        "type":"SimpleIdentifier",
+                                        "isPrivateName":false,
+                                        "name":"test"
+                                    },
+                                    "rightOperand":{
+                                        "type":"SimpleStringLiteral",
+                                        "value":"test1"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "type":"ReturnStatement",
+                    "expression":{
+                        "type":"SimpleIdentifier",
+                        "isPrivateName":false,
+                        "name":"res"
+                    }
+                }
+            ]
+        }
+    },
+    "returnType":{
+        "type":"TypeName",
+        "name":{
+            "type":"SimpleIdentifier",
+            "isPrivateName":false,
+            "name":"String"
+        }
+    }
+}
+```
+## await 实现见([test6.dart](lib/test6.dart))
