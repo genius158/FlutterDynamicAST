@@ -79,6 +79,10 @@ class DVM {
       case "SimpleIdentifier":
         return condition;
 
+      case "PostfixExpression":
+        return _executeLexeme(_expressions(condition["operand"], args)["name"],
+            0, condition["lexeme"], args);
+
       case "IndexExpression":
         return [
           _expressions(condition["target"], args),
@@ -134,10 +138,10 @@ class DVM {
             _expressions(condition["rightHandSide"], args), args);
         final lexeme = condition["lexeme"];
         var map = args;
-        if ((left as List?)?.length == 2) {
-          return _executeLexeme(left![1], right, lexeme, map[left[0]["name"]]);
+        if (left is List && left.length == 2) {
+          return _executeLexeme(left[1], right, lexeme, map[left[0]["name"]]);
         }
-        return _executeLexeme(left, right, lexeme, args);
+        return _executeLexeme(left["name"], right, lexeme, args);
 
       case "InterpolationString":
         return condition["value"];
@@ -358,6 +362,18 @@ class DVM {
     switch (lexeme) {
       case "=":
         args[left] = right;
+        break;
+      case "+=":
+        args[left] = args[left] + right;
+        break;
+      case "-=":
+        args[left] = args[left] - right;
+        break;
+      case "++":
+        args[left] = args[left] + 1;
+        break;
+      case "--":
+        args[left] = args[left] - 1;
         break;
     }
   }

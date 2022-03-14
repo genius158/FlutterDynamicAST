@@ -20,7 +20,8 @@ void main(List<String> arguments) {
   var argResults = parser.parse(arguments);
   var paths = List.from(argResults.rest);
   if (paths.isEmpty) {
-    paths.add('/Users/didi/AndroidStudioProjects/ast_test/lib/test6.dart');
+    paths.add(
+        '/Users/didi/AndroidStudioProjects/FlutterDynamicAST/lib/test8.dart');
   }
   generate(paths[0]);
 }
@@ -218,10 +219,7 @@ class MyAstVisitor extends SimpleAstVisitor<Map> {
 
   @override
   Map? visitIntegerLiteral(IntegerLiteral node) {
-    return {
-      "type": "NumericLiteral",
-      "value": node.value
-    }.appendSource(node);
+    return {"type": "NumericLiteral", "value": node.value}.appendSource(node);
   }
 
   @override
@@ -497,6 +495,7 @@ class MyAstVisitor extends SimpleAstVisitor<Map> {
       "value": node.value,
     }.appendSource(node);
   }
+
   @override
   Map? visitStringInterpolation(StringInterpolation node) {
     return {
@@ -504,6 +503,7 @@ class MyAstVisitor extends SimpleAstVisitor<Map> {
       "elements": _safelyVisitNodeList(node.elements),
     }.appendSource(node);
   }
+
   @override
   Map? visitInterpolationString(InterpolationString node) {
     return {
@@ -511,11 +511,21 @@ class MyAstVisitor extends SimpleAstVisitor<Map> {
       "value": node.value,
     }.appendSource(node);
   }
+
   @override
   Map? visitInterpolationExpression(InterpolationExpression node) {
     return {
       "type": "InterpolationExpression",
       "expression": _safelyVisitNode(node.expression),
+    }.appendSource(node);
+  }
+
+  @override
+  Map? visitPostfixExpression(PostfixExpression node) {
+    return {
+      "type": "PostfixExpression",
+      "operand": _safelyVisitNode(node.operand),
+      "lexeme": node.operator.lexeme,
     }.appendSource(node);
   }
 }
