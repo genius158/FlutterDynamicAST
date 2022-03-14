@@ -4,7 +4,7 @@ flutter 动态执行 ast 示例
 
 ## 生成 ast
 
-- 生成 lib下的test3.dart dart simple_ast.dart -f test3.dart
+- 生成 lib下的test3.dart： dart simple_ast.dart -f test3.dart
 
 ## 运算相关 ([test2.dart](lib/test2.dart))
 
