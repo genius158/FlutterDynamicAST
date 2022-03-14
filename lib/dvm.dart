@@ -112,12 +112,15 @@ class DVM {
             _warpValueIfId(_expressions(condition["target"], args), args);
         final argumentList = _expressions(condition["argumentList"], args);
 
-        var funcMap = Map.of(DefaultRegister.instance.funcMap);
-        dynamic func = funcMap[_methodTag(methodName, argumentList.length)];
-        // 没有找到方法，在私有类里的注册寻找
-        if (func == null && register != null) {
+        dynamic func;
+        // 现在类里找注册的方法
+        if (register != null) {
           target = register!.target;
           func = register!.funcMap[_methodTag(methodName, argumentList.length)];
+        } else {
+          // 再全局找
+          var funcMap = Map.of(DefaultRegister.instance.funcMap);
+          func = funcMap[_methodTag(methodName, argumentList.length)];
         }
 
         return target != null ? func(target, argumentList) : func(argumentList);
