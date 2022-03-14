@@ -146,21 +146,19 @@ class DVM {
       case "StringInterpolation":
         List elements = condition["elements"];
         var res = "";
-        for(int i = 0 ;i< elements.length;i++){
+        for (int i = 0; i < elements.length; i++) {
           final element = elements[i];
           if (element == null) continue;
           final result = _warpValueIfId(_expressions(element, args), args);
           if (result is _AwaitExpression) {
             return result
               ..then((value) async {
-                i++;
                 res = "$res$value";
-                while (i < elements.length) {
+                while (++i < elements.length) {
                   final ele = elements[i];
                   if (ele == null) continue;
                   final next = _warpValueIfId(_expressions(ele, args), args);
                   res = "$res${await _awaitVal(next)}";
-                  i++;
                 }
                 return res;
               });
@@ -198,20 +196,22 @@ class DVM {
         return _expressions(condition["variables"], args);
       case "VariableDeclarationList":
         final variables = condition["variables"];
-        // TODO
-        body(index) {
-          if (index >= variables.length) return null;
-          final variable = variables[index];
+        for (int i = 0; i < variables.length; i++) {
+          final variable = variables[i];
           if (variable == null) return null;
           final result = _expressions(variable, args);
           if (result is _AwaitExpression) {
-            return result..then((value) => body(index + 1));
-          } else {
-            return body(index + 1);
+            return result
+              ..then((unused) async {
+                while (++i < variables.length) {
+                  final ele = variables[i];
+                  final result = _expressions(ele, args);
+                  await _awaitVal(result);
+                }
+              });
           }
         }
-        return body(0);
-
+        return null;
       case "VariableDeclarator":
         final tag = _expressions(condition["name"], args)["name"];
         final initializer = _expressions(condition["initializer"], args);
@@ -221,7 +221,7 @@ class DVM {
         } else {
           args[tag] = _warpValueIfId(initializer, args);
         }
-        break;
+        return null;
 
       case "BlockFunctionBody":
         return _expressions(condition["block"], args);
@@ -235,8 +235,8 @@ class DVM {
           if (result is _AwaitExpression) {
             return result
               ..then((value) async {
-                while (i < statements.length) {
-                  final ele = statements[++i];
+                while (++i < statements.length) {
+                  final ele = statements[i];
                   final next = _warpValueIfId(_expressions(ele, args), args);
                   final awaitVal = await _awaitVal(next);
                   if (awaitVal is _ReturnStatement) {
