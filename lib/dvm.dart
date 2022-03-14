@@ -348,35 +348,39 @@ class DVM {
           return --b;
       }
     }
-    a ??= 0;
     switch (lexeme) {
       case "+":
-        return a + b;
+        return (a ?? 0) + b;
       case "-":
-        return a - b;
+        return (a ?? 0) - b;
       case "*":
-        return a * b;
+        return (a ?? 0) * b;
       case "/":
-        return a / b;
+        return (a ?? 0) / b;
       case "<<":
-        return a << b;
+        return (a ?? 0) << b;
       case ">>":
-        return a >> b;
+        return (a ?? 0) >> b;
       case "|":
-        return a | b;
+        return (a ?? 0) | b;
       case "&":
-        return a & b;
+        return (a ?? 0) & b;
       case "^":
-        return a ^ b;
+        return (a ?? 0) ^ b;
       case "%":
-        return a % b;
+        return (a ?? 0) % b;
       case "==":
-        return a == b;
+        return (a ?? 0) == b;
+      case "??":
+        return a ?? b;
     }
   }
 
   dynamic _executeLexeme(left, right, lexeme, dynamic args) {
     switch (lexeme) {
+      case "??=":
+        args[left] ??= right;
+        return args[left];
       case "=":
         args[left] = right;
         break;
