@@ -77,12 +77,12 @@ class DVM {
         return argumentList;
       /* ------------------ divide --------------- */
       case "SimpleIdentifier":
-        return condition;
+        return _SimpleIdentifier(condition, args);
 
       case "PostfixExpression":
         var operand = _expressions(condition["operand"], args);
-        if (_isParamsId(operand)) {
-          return _executeLexeme(operand["name"], 0, condition["lexeme"], args);
+        if (isIdentifier(operand)) {
+          return _executeLexeme(operand.name, 0, condition["lexeme"], args);
         }
         return _executeLexeme(operand, 0, condition["lexeme"], args);
 
@@ -103,14 +103,14 @@ class DVM {
         final arguments = condition["arguments"];
         for (Map arg in arguments) {
           dynamic data = _expressions(arg, args);
-          argumentList.add(_warpValueIfId(data, args));
+          argumentList.add(_warpValueIfId(data));
         }
         return argumentList;
       case "MethodInvocation":
-        final methodName = _expressions(condition["methodName"], args)["name"];
-        var target =
-            _warpValueIfId(_expressions(condition["target"], args), args);
-        final argumentList = _expressions(condition["argumentList"], args);
+        final methodName = _expressions(condition["methodName"], args).name;
+        var target = _warpValueIfId(_expressions(condition["target"], args));
+        final argumentList =
+            _expressions(condition["argumentList"], args) as List;
 
         dynamic func;
         // 现在类里找注册的方法
@@ -121,6 +121,25 @@ class DVM {
           // 再全局找
           var funcMap = Map.of(DefaultRegister.instance.funcMap);
           func = funcMap[_methodTag(methodName, argumentList.length)];
+        }
+
+        final awaitArgIndex =
+            argumentList.indexWhere(((ele) => ele is _AwaitExpression));
+        if (awaitArgIndex != -1) {
+          return argumentList[awaitArgIndex]
+            ..then((value) async {
+              for (int i = 0; i < argumentList.length; i++) {
+                if (i == awaitArgIndex) {
+                  argumentList[i] = value;
+                } else {
+                  // 一梭子 全部 转化成 future，并等待结果返回
+                  argumentList[i] = await _awaitVal(argumentList[i]);
+                }
+              }
+              return target != null
+                  ? func(target, argumentList)
+                  : func(argumentList);
+            });
         }
 
         return target != null ? func(target, argumentList) : func(argumentList);
@@ -136,23 +155,23 @@ class DVM {
 
       case "PrefixExpression":
         var res = _expressions(condition["operand"], args);
-        if (_isParamsId(res)) {
-          args[res["name"]] =
-              _calculate(null, _warpValueIfId(res, args), condition["lexeme"]);
-          return _warpValueIfId(res, args);
+        if (isIdentifier(res)) {
+          args[res.name] =
+              _calculate(null, _warpValueIfId(res), condition["lexeme"]);
+          return _warpValueIfId(res);
         }
         return _calculate(null, res, condition["lexeme"]);
 
       case "AssignmentExpression":
         final left = _expressions(condition["leftHandSide"], args);
-        final right = _warpValueIfId(
-            _expressions(condition["rightHandSide"], args), args);
+        final right =
+            _warpValueIfId(_expressions(condition["rightHandSide"], args));
         final lexeme = condition["lexeme"];
         var map = args;
         if (left is List && left.length == 2) {
-          return _executeLexeme(left[1], right, lexeme, map[left[0]["name"]]);
+          return _executeLexeme(left[1], right, lexeme, map[left[0].name]);
         }
-        return _executeLexeme(left["name"], right, lexeme, args);
+        return _executeLexeme(left.name, right, lexeme, args);
 
       case "InterpolationString":
         return condition["value"];
@@ -164,7 +183,7 @@ class DVM {
         for (int i = 0; i < elements.length; i++) {
           final element = elements[i];
           if (element == null) continue;
-          final result = _warpValueIfId(_expressions(element, args), args);
+          final result = _warpValueIfId(_expressions(element, args));
           if (result is _AwaitExpression) {
             return result
               ..then((value) async {
@@ -172,7 +191,8 @@ class DVM {
                 while (++i < elements.length) {
                   final ele = elements[i];
                   if (ele == null) continue;
-                  final next = _warpValueIfId(_expressions(ele, args), args);
+                  final next = _warpValueIfId(_expressions(ele,args));
+                  // 一梭子 全部 转化成 future，并等待结果返回
                   res = "$res${await _awaitVal(next)}";
                 }
                 return res;
@@ -189,18 +209,21 @@ class DVM {
 
       case "ReturnStatement":
         return _ReturnStatement(
-            _warpValueIfId(_expressions(condition["expression"], args), args));
+            _warpValueIfId(_expressions(condition["expression"], args)));
 
       case "BinaryExpression":
         final lexeme = condition["lexeme"];
         final leftValue =
-            _warpValueIfId(_expressions(condition["leftOperand"], args), args);
+            _warpValueIfId(_expressions(condition["leftOperand"], args));
         final rightValue =
-            _warpValueIfId(_expressions(condition["rightOperand"], args), args);
+            _warpValueIfId(_expressions(condition["rightOperand"], args));
+        // 是否存在await操作
         if (leftValue is _AwaitExpression || rightValue is _AwaitExpression) {
           return _AwaitExpression(
-              Future(() async => _calculate(await _awaitVal(leftValue),
-                  await _awaitVal(rightValue), lexeme)),
+              Future(() async => _calculate(
+                  await _awaitVal(leftValue) /*一梭子 全部 转化成 future，并等待结果返回*/,
+                  await _awaitVal(rightValue) /*一梭子 全部 转化成 future，并等待结果返回*/,
+                  lexeme)),
               type: condition.toString());
         }
 
@@ -228,13 +251,13 @@ class DVM {
         }
         return null;
       case "VariableDeclarator":
-        final tag = _expressions(condition["name"], args)["name"];
+        final tag = _expressions(condition["name"], args).name;
         final initializer = _expressions(condition["initializer"], args);
         if (initializer is _AwaitExpression) {
           return initializer
-            ..then((value) => {args[tag] = _warpValueIfId(value, args)});
+            ..then((value) => {args[tag] = _warpValueIfId(value)});
         } else {
-          args[tag] = _warpValueIfId(initializer, args);
+          args[tag] = _warpValueIfId(initializer);
         }
         return null;
 
@@ -248,11 +271,12 @@ class DVM {
           final result = _expressions(statement, args);
           if (result is _ReturnStatement) return result;
           if (result is _AwaitExpression) {
+            // 如果是 await 操作全部转化成 future 操作
             return result
               ..then((value) async {
                 while (++i < statements.length) {
                   final ele = statements[i];
-                  final next = _warpValueIfId(_expressions(ele, args), args);
+                  final next = _warpValueIfId(_expressions(ele, args));
                   final awaitVal = await _awaitVal(next);
                   if (awaitVal is _ReturnStatement) {
                     return _awaitVal(awaitVal.result);
@@ -326,20 +350,12 @@ class DVM {
     return "$methodName@$argsCount";
   }
 
-  dynamic _getParamsId(Map condition, Map args) => args[condition["name"]];
-
-  bool _isParamsId(condition) {
-    if (condition is! Map) return false;
-    return condition["type"] == "SimpleIdentifier";
-  }
+  bool isIdentifier(dynamic obj) => obj is _SimpleIdentifier;
 
   /// 把临时变量转换成数值
-  dynamic _warpValueIfId(value, Map args) {
+  dynamic _warpValueIfId(value) {
     if (value == null) return null;
-    if (_isParamsId(value)) {
-      return _getParamsId(value, args);
-    }
-    return value;
+    return isIdentifier(value) ? value.value : value;
   }
 
   dynamic _calculate(a, b, lexeme) {
@@ -409,6 +425,16 @@ class DVM {
     if (clazzMethod == null) return false;
     return true;
   }
+}
+
+class _SimpleIdentifier {
+  final Map argsStack;
+  final Map data;
+  final String name;
+
+  _SimpleIdentifier(this.data, this.argsStack) : name = data["name"];
+
+  get value => argsStack[name];
 }
 
 class _ReturnStatement {
