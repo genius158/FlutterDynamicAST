@@ -50,6 +50,8 @@ class DVM {
     switch (condition["type"]) {
       case "SimpleStringLiteral":
         return condition["value"];
+      case "BooleanLiteral":
+        return condition["value"];
       case "NumericLiteral":
         condition["lexeme"];
         return condition["value"];
@@ -115,9 +117,12 @@ class DVM {
         dynamic func;
         // 现在类里找注册的方法
         if (register != null) {
-          target = register!.target;
           func = register!.funcMap[_methodTag(methodName, argumentList.length)];
-        } else {
+          if (func != null) {
+            target = register!.target;
+          }
+        }
+        if (func == null) {
           // 再全局找
           var funcMap = Map.of(DefaultRegister.instance.funcMap);
           func = funcMap[_methodTag(methodName, argumentList.length)];
@@ -144,6 +149,34 @@ class DVM {
 
         return target != null ? func(target, argumentList) : func(argumentList);
 
+      case "ForStatement":
+        var forLoopParts = condition["forLoopParts"];
+        for (_expressions(forLoopParts["variables"], args);
+            _expressions(forLoopParts["condition"], args);
+            forLoopParts["updaters"]
+                .forEach((element) => _expressions(element, args))) {
+          var res = _expressions(condition["body"], args);
+          if (res is _ReturnStatement) return res;
+        }
+        return null;
+
+      case "WhileStatement":
+        while (_expressions(condition["condition"], args)) {
+          var res = _expressions(condition["body"], args);
+          if (res is _ReturnStatement) return res;
+          if (res is _BreakStatement) break;
+          if (res is _AwaitExpression) {
+            return res.then((value) async {
+              while (_expressions(condition["condition"], args)) {
+                var resInner =
+                    await _awaitVal(_expressions(condition["body"], args));
+                if (resInner is _ReturnStatement) return resInner;
+                if (resInner is _BreakStatement) break;
+              }
+            });
+          }
+        }
+        return null;
       case "ExpressionStatement":
         return _expressions(condition["expression"], args);
       case "ConditionalExpression":
@@ -191,7 +224,7 @@ class DVM {
                 while (++i < elements.length) {
                   final ele = elements[i];
                   if (ele == null) continue;
-                  final next = _warpValueIfId(_expressions(ele,args));
+                  final next = _warpValueIfId(_expressions(ele, args));
                   // 一梭子 全部 转化成 future，并等待结果返回
                   res = "$res${await _awaitVal(next)}";
                 }
@@ -206,6 +239,9 @@ class DVM {
       case "AwaitExpression":
         return _AwaitExpression(_expressions(condition["expression"], args),
             type: condition["expression"].toString());
+
+      case "BreakStatement":
+        return _BreakStatement();
 
       case "ReturnStatement":
         return _ReturnStatement(
@@ -269,6 +305,7 @@ class DVM {
           final statement = statements[i];
           if (statement == null) return null;
           final result = _expressions(statement, args);
+          if (result is _BreakStatement) return result;
           if (result is _ReturnStatement) return result;
           if (result is _AwaitExpression) {
             // 如果是 await 操作全部转化成 future 操作
@@ -278,6 +315,7 @@ class DVM {
                   final ele = statements[i];
                   final next = _warpValueIfId(_expressions(ele, args));
                   final awaitVal = await _awaitVal(next);
+                  if(awaitVal is _BreakStatement)return awaitVal;
                   if (awaitVal is _ReturnStatement) {
                     return _awaitVal(awaitVal.result);
                   }
@@ -285,6 +323,7 @@ class DVM {
               });
           }
         }
+        {}
     }
     return null;
   }
@@ -390,6 +429,14 @@ class DVM {
         return (a ?? 0) % b;
       case "==":
         return (a ?? 0) == b;
+      case "<":
+        return (a ?? 0) < b;
+      case "<=":
+        return (a ?? 0) <= b;
+      case ">":
+        return (a ?? 0) > b;
+      case ">=":
+        return (a ?? 0) >= b;
       case "??":
         return a ?? b;
     }
@@ -426,6 +473,8 @@ class DVM {
     return true;
   }
 }
+
+class _BreakStatement {}
 
 class _SimpleIdentifier {
   final Map argsStack;

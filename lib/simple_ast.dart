@@ -21,7 +21,7 @@ void main(List<String> arguments) {
   var paths = List.from(argResults.rest);
   if (paths.isEmpty) {
     paths.add(
-        '/Users/didi/AndroidStudioProjects/FlutterDynamicAST/lib/test8.dart');
+        '/Users/didi/AndroidStudioProjects/FlutterDynamicAST/lib/test11.dart');
   }
   generate(paths[0]);
 }
@@ -374,7 +374,6 @@ class MyAstVisitor extends SimpleAstVisitor<Map> {
   Map? visitBreakStatement(BreakStatement node) {
     return {
       "type": "BreakStatement",
-      "target": _safelyVisitNode(node.target),
     }.appendSource(node);
   }
 
@@ -407,7 +406,18 @@ class MyAstVisitor extends SimpleAstVisitor<Map> {
     return {
       "type": "ForStatement",
       "body": _safelyVisitNode(node.body),
+      "forKeyword": node.forKeyword.lexeme,
       "forLoopParts": _safelyVisitNode(node.forLoopParts),
+    }.appendSource(node);
+  }
+
+  @override
+  Map? visitForPartsWithDeclarations(ForPartsWithDeclarations node) {
+    return {
+      "type": "ForPartsWithDeclarations",
+      "condition": _safelyVisitNode(node.condition),
+      "updaters": _safelyVisitNodeList(node.updaters),
+      "variables": _safelyVisitNode(node.variables),
     }.appendSource(node);
   }
 
@@ -424,6 +434,15 @@ class MyAstVisitor extends SimpleAstVisitor<Map> {
     return {
       "type": "ForEachPartsWithIdentifier",
       "identifier": _safelyVisitNode(node.identifier),
+    }.appendSource(node);
+  }
+
+  @override
+  Map? visitWhileStatement(WhileStatement node) {
+    return {
+      "type": "WhileStatement",
+      "condition": _safelyVisitNode(node.condition),
+      "body": _safelyVisitNode(node.body),
     }.appendSource(node);
   }
 
@@ -528,6 +547,7 @@ class MyAstVisitor extends SimpleAstVisitor<Map> {
       "lexeme": node.operator.lexeme,
     }.appendSource(node);
   }
+
 }
 
 const bool _withSource = false;
